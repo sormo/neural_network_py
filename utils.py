@@ -3,6 +3,7 @@ import numpy as np
 import sklearn
 import sklearn.datasets
 import sklearn.linear_model
+import scipy
 
 def plot_cost(costs, learning_rate):
     plt.plot(np.squeeze(costs))
@@ -71,3 +72,16 @@ def load_gaussian_quantiles_dataset():
 def load_no_structure_dataset():
     X, Y = np.random.rand(200, 2), np.random.rand(200, 1) > 0.5
     return X.T, Y.reshape(1, Y.shape[0])
+
+def load_smaller_circles_dataset():
+    X, Y = sklearn.datasets.make_circles(n_samples=300, noise=.05)
+    return X.T, Y.reshape(1, Y.shape[0])
+
+def load_goalkeeper_dataset():
+    data = scipy.io.loadmat('goalkeeper_dataset/data.mat')
+    train_X = data['X'].T
+    train_Y = data['y'].T
+    # test_X = data['Xval'].T
+    # test_Y = data['yval'].T
+
+    return train_X, train_Y

@@ -4,7 +4,7 @@ import sklearn
 import sklearn.datasets
 import sklearn.linear_model
 from utils import plot_decision_boundary
-from utils import load_planar_dataset, load_circles_dataset, load_moons_dataset, load_blobs_dataset, load_gaussian_quantiles_dataset, load_no_structure_dataset
+from utils import load_planar_dataset, load_circles_dataset, load_moons_dataset, load_blobs_dataset, load_gaussian_quantiles_dataset, load_no_structure_dataset, load_smaller_circles_dataset, load_goalkeeper_dataset
 from neural_network.neural_network import train_model, forward_pass
 from neural_network.config import *
 
@@ -42,7 +42,7 @@ def evaluate_dataset(X, Y):
     # Build a model with a n_h-dimensional hidden layer
     dimensions = [X.shape[0], 20, 7, 5, Y.shape[0]]
     activations = ['', ACTIVATION_FUNCTION_RELU, ACTIVATION_FUNCTION_RELU, ACTIVATION_FUNCTION_RELU, ACTIVATION_FUNCTION_SIGMOID]
-    hyperparams = { HYPERPARAM_LEARNING_RATE: 0.0075, HYPERPARAM_LEARNING_STEPS: 2100 }
+    hyperparams = { HYPERPARAM_LEARNING_RATE: 0.3, HYPERPARAM_LEARNING_STEPS: 10000, HYPERPARAM_DROPOUT_KEEP_PROB: 0.86 }
 
     model, costs = train_model(dimensions, activations, hyperparams, X, Y)
 
@@ -61,10 +61,12 @@ def evaluate_dataset(X, Y):
 datasets = {
     "flower": load_planar_dataset(),
     "noisy_circles": load_circles_dataset(),
+    "circles": load_smaller_circles_dataset(),
     "noisy_moons": load_moons_dataset(),
     "blobs": load_blobs_dataset(),
     "gaussian_quantiles": load_gaussian_quantiles_dataset(),
-    "no_structure": load_no_structure_dataset()
+    "no_structure": load_no_structure_dataset(),
+    "goalkeeper": load_goalkeeper_dataset()
 }
 
-evaluate_dataset(*datasets['flower'])
+evaluate_dataset(*datasets['goalkeeper'])
