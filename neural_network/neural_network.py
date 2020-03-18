@@ -1,6 +1,6 @@
 import numpy as np
 from .config import *
-from .utils import get_activation_function
+from .utils import get_activation_function, random_mini_batches
 
 def create_context(dimensions, activations, hyperparams):
     """
@@ -74,7 +74,9 @@ def compute_cost(context, Y):
     AL = context[-1]['A']
 
     # Using nansum here ???
-    cost = -(1/m)*np.nansum(Y*np.log(AL) + (1 - Y)*np.log(1 - AL))
+    #cost = -(1/m)*np.nansum(Y*np.log(AL) + (1 - Y)*np.log(1 - AL))
+    cost = -np.nansum(Y*np.log(AL) + (1 - Y)*np.log(1 - AL))
+    
     # To make sure your cost's shape is what we expect (e.g. this turns [[17]] into 17).
     cost = np.squeeze(cost)
     assert(cost.shape == ())
@@ -95,7 +97,8 @@ def compute_cost_regularization(context, Y, hyperparams):
     if HYPERPARAM_LAMBDA in hyperparams:
         for i in range(1, len(context)):
             L2_regularization_cost += np.sum(np.square(context[i]['W']))
-        L2_regularization_cost *= (hyperparams[HYPERPARAM_LAMBDA]/(2*m))
+        # L2_regularization_cost *= (hyperparams[HYPERPARAM_LAMBDA]/(2*m))
+        L2_regularization_cost *= (hyperparams[HYPERPARAM_LAMBDA]/2)
 
     return cross_entropy_cost + L2_regularization_cost
 
@@ -147,7 +150,7 @@ def update_parameters(context, hyperparams):
         context[i]['W'] = context[i]['W'] - hyperparams[HYPERPARAM_LEARNING_RATE] * context[i]['dW']
         context[i]['b'] = context[i]['b'] - hyperparams[HYPERPARAM_LEARNING_RATE] * context[i]['db']
 
-def train_model(dimensions, activations, hyperparams, X, Y):
+def train_model(dimensions, activations, hyperparams, X, Y, print_cost=True):
     """
     Input:
     dimensions   List of numbers representing number of units from input layer,
@@ -160,16 +163,27 @@ def train_model(dimensions, activations, hyperparams, X, Y):
     """
     context = create_context(dimensions, activations, hyperparams)
     costs = []
+    m = X.shape[1]
 
     for i in range(hyperparams[HYPERPARAM_LEARNING_STEPS]):
-        forward_pass(context, X, hyperparams)
+        minibatch_size = m if HYPERPARAM_MINI_BATCH_SIZE not in hyperparams else hyperparams[HYPERPARAM_MINI_BATCH_SIZE]
+        minibatches = random_mini_batches(X, Y, minibatch_size)
+        cost_total = 0
 
-        if i % 100 == 0:
-            costs.append(compute_cost_regularization(context, Y, hyperparams))
-            print(f'Iteration {i:04d} cost {costs[-1]:.4f}')
+        for minibatch in minibatches:
+            minibatch_X, minibatch_Y = minibatch
+            forward_pass(context, minibatch_X, hyperparams)
 
-        backward_pass(context, Y, hyperparams)
+            cost_total += compute_cost_regularization(context, minibatch_Y, hyperparams)
 
-        update_parameters(context, hyperparams)
+            backward_pass(context, minibatch_Y, hyperparams)
+            update_parameters(context, hyperparams)
+
+        cost_avg = cost_total / m
+        # Print the cost every 1000 epoch
+        if print_cost and i % 1000 == 0:
+            print(f'Cost after epoch {i}: {cost_avg:.4f}')
+        if print_cost and i % 100 == 0:
+            costs.append(cost_avg)
 
     return context, costs

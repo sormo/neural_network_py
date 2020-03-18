@@ -7,8 +7,12 @@ HYPERPARAM_LEARNING_STEPS = 'learning_steps'
 HYPERPARAM_LAMBDA = 'lambda'
 # Optional parameter. Droput keep probability. Number from 0 to 1.
 # For example 0.86 means that there is 14% chance of shutting down a neuron.
-# Do not use droput during test (inly during training)!
+# Do not use droput during test (only during training)!
 HYPERPARAM_DROPOUT_KEEP_PROB = 'keep_prob'
+# Optional parameterSize of mini-batch used during training.
+# Usually 64, 128, 256, 512. If none, whole training set is processed before
+# parameters update.
+HYPERPARAM_MINI_BATCH_SIZE = 'minibatch_size'
 
 ACTIVATION_FUNCTION_RELU = 'relu'
 ACTIVATION_FUNCTION_SIGMOID = 'sigmoid'

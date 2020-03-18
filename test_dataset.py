@@ -42,7 +42,8 @@ def evaluate_dataset(X, Y):
     # Build a model with a n_h-dimensional hidden layer
     dimensions = [X.shape[0], 20, 7, 5, Y.shape[0]]
     activations = ['', ACTIVATION_FUNCTION_RELU, ACTIVATION_FUNCTION_RELU, ACTIVATION_FUNCTION_RELU, ACTIVATION_FUNCTION_SIGMOID]
-    hyperparams = { HYPERPARAM_LEARNING_RATE: 0.3, HYPERPARAM_LEARNING_STEPS: 10000, HYPERPARAM_DROPOUT_KEEP_PROB: 0.86 }
+    # hyperparams = { HYPERPARAM_LEARNING_RATE: 0.3, HYPERPARAM_LEARNING_STEPS: 10000, HYPERPARAM_DROPOUT_KEEP_PROB: 0.86 }
+    hyperparams = { HYPERPARAM_LEARNING_RATE: 0.0007, HYPERPARAM_LEARNING_STEPS: 10000, HYPERPARAM_MINI_BATCH_SIZE: 64 }
 
     model, costs = train_model(dimensions, activations, hyperparams, X, Y)
 
@@ -69,4 +70,4 @@ datasets = {
     "goalkeeper": load_goalkeeper_dataset()
 }
 
-evaluate_dataset(*datasets['goalkeeper'])
+evaluate_dataset(*datasets['noisy_moons'])
