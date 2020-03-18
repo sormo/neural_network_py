@@ -26,7 +26,21 @@ def create_context(dimensions, activations, hyperparams):
         W = np.random.randn(dimensions[i], dimensions[i-1]) * get_init_factor(activations[i], dimensions[i-1])
         b = np.zeros((dimensions[i], 1))
         act = get_activation_function(activations[i])
-        result.append({'W': W, 'b': b, 'activation': act})
+        layer = {'W': W, 'b': b, 'activation': act}
+
+        if HYPERPARAM_MOMENTUM_RATE in hyperparams:
+            layer['v_dW'] = np.zeros(W.shape)
+            layer['v_db'] = np.zeros(b.shape)
+
+        if HYPERPARAM_ADAM_RATE in hyperparams:
+            layer['s_dW'] = np.zeros(W.shape)
+            layer['s_db'] = np.zeros(b.shape)
+            layer['s_dW_corrected'] = np.zeros(W.shape)
+            layer['s_db_corrected'] = np.zeros(b.shape)
+            layer['v_dW_corrected'] = np.zeros(W.shape)
+            layer['v_db_corrected'] = np.zeros(b.shape)
+
+        result.append(layer)
 
     return result
 
@@ -76,7 +90,7 @@ def compute_cost(context, Y):
     # Using nansum here ???
     #cost = -(1/m)*np.nansum(Y*np.log(AL) + (1 - Y)*np.log(1 - AL))
     cost = -np.nansum(Y*np.log(AL) + (1 - Y)*np.log(1 - AL))
-    
+
     # To make sure your cost's shape is what we expect (e.g. this turns [[17]] into 17).
     cost = np.squeeze(cost)
     assert(cost.shape == ())
@@ -142,6 +156,38 @@ def backward_pass(context, Y, hyperparams):
     for i in reversed(range(1, L + 1)):
         compute_backward(context, i, hyperparams)
 
+def update_parameters_adam(context, hyperparams, learning_step):
+    """
+    Update parameters according to computed gradients with adam.
+    """
+    beta1, beta2, learning_rate = hyperparams[HYPERPARAM_MOMENTUM_RATE], hyperparams[HYPERPARAM_ADAM_RATE], hyperparams[HYPERPARAM_LEARNING_RATE]
+    epsilon = 1e-8 if HYPERPARAM_EPSILON not in hyperparams else hyperparams[HYPERPARAM_EPSILON]
+
+    for i in range(1, len(context)):
+        context[i]['v_dW'] = beta1 * context[i]['v_dW'] + (1 - beta1) * context[i]['dW']
+        context[i]['v_db'] = beta1 * context[i]['v_db'] + (1 - beta1) * context[i]['db']
+        context[i]['v_dW_corrected'] = context[i]['v_dW'] / (1 - np.power(beta1, learning_step))
+        context[i]['v_db_corrected'] = context[i]['v_db'] / (1 - np.power(beta1, learning_step))
+
+        context[i]['s_dW'] = beta2 * context[i]['s_dW'] + (1 - beta2) * context[i]['dW'] * context[i]['dW']
+        context[i]['s_db'] = beta2 * context[i]['s_db'] + (1 - beta2) * context[i]['db'] * context[i]['db']
+        context[i]['s_dW_corrected'] = context[i]['s_dW'] / (1 - np.power(beta2, learning_step))
+        context[i]['s_db_corrected'] = context[i]['s_db'] / (1 - np.power(beta2, learning_step))
+
+        context[i]['W'] = context[i]['W'] - learning_rate * (context[i]['v_dW_corrected'] / (np.sqrt(context[i]['s_dW_corrected']) + epsilon))
+        context[i]['b'] = context[i]['b'] - learning_rate * (context[i]['v_db_corrected'] / (np.sqrt(context[i]['s_db_corrected']) + epsilon))
+
+def update_parameters_momentum(context, hyperparams):
+    """
+    Update parameters according to computed gradients with momentum.
+    """
+    for i in range(1, len(context)):
+        context[i]['v_dW'] = hyperparams[HYPERPARAM_MOMENTUM_RATE] * context[i]['v_dW'] + (1 - hyperparams[HYPERPARAM_MOMENTUM_RATE]) * context[i]['dW']
+        context[i]['v_db'] = hyperparams[HYPERPARAM_MOMENTUM_RATE] * context[i]['v_db'] + (1 - hyperparams[HYPERPARAM_MOMENTUM_RATE]) * context[i]['db']
+
+        context[i]['W'] = context[i]['W'] - hyperparams[HYPERPARAM_LEARNING_RATE] * context[i]['v_dW']
+        context[i]['b'] = context[i]['b'] - hyperparams[HYPERPARAM_LEARNING_RATE] * context[i]['v_db']
+
 def update_parameters(context, hyperparams):
     """
     Update parameters according to computed gradients.
@@ -164,6 +210,7 @@ def train_model(dimensions, activations, hyperparams, X, Y, print_cost=True):
     context = create_context(dimensions, activations, hyperparams)
     costs = []
     m = X.shape[1]
+    learning_step = 0
 
     for i in range(hyperparams[HYPERPARAM_LEARNING_STEPS]):
         minibatch_size = m if HYPERPARAM_MINI_BATCH_SIZE not in hyperparams else hyperparams[HYPERPARAM_MINI_BATCH_SIZE]
@@ -171,13 +218,21 @@ def train_model(dimensions, activations, hyperparams, X, Y, print_cost=True):
         cost_total = 0
 
         for minibatch in minibatches:
+            learning_step += 1
             minibatch_X, minibatch_Y = minibatch
+
             forward_pass(context, minibatch_X, hyperparams)
 
             cost_total += compute_cost_regularization(context, minibatch_Y, hyperparams)
 
             backward_pass(context, minibatch_Y, hyperparams)
-            update_parameters(context, hyperparams)
+
+            if HYPERPARAM_ADAM_RATE in hyperparams and HYPERPARAM_MOMENTUM_RATE in hyperparams:
+                update_parameters_adam(context, hyperparams, learning_step)
+            elif HYPERPARAM_MOMENTUM_RATE in hyperparams:
+                update_parameters_momentum(context, hyperparams)
+            else:
+                update_parameters(context, hyperparams)
 
         cost_avg = cost_total / m
         # Print the cost every 1000 epoch
